@@ -1,0 +1,8 @@
+{
+  "version": 2,
+  "name": "veritas-collesium",
+  "rootDirectory": "frontend",
+  "framework": "nextjs",
+  "buildCommand": "next build",
+  "installCommand": "npm install"
+}

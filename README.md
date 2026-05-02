@@ -1,80 +1,76 @@
-![Veritas Sentinel Enclave Banner](./assets/banner.png)
+![Veritas Sentinel Banner](./assets/banner.png)
 
-# Veritas Sentinel Enclave
+# Veritas: The Brex for AI Bots
+**Hardware-Enforced Protocol Security & Agentic Yield Management on Solana.**
 
-**Hardware-Secured, RL-Optimized Security Layer for AI Agent Wallets on Solana.**
-
-Veritas Sentinel Enclave is a sophisticated security architecture designed to protect autonomous AI agents on the Solana blockchain. It combines a hardware-secured Anchor program with a multi-agent LangGraph orchestration layer to provide real-time transaction auditing, exploit grounding, and cryptographic enforcement.
-
----
-
-## 🛡️ Core Features
-
-- **Multi-Agent Swarm Orchestration**: A cyclical LangGraph-style state machine that coordinates parallel auditing nodes.
-- **XGBoost Fast-Path Triage**: High-speed risk scoring using a pre-trained decision tree to auto-approve low-risk interactions.
-- **DeepSeek-R1 Synthesis**: Advanced LLM-based decision synthesis (DeepSeek-R1) for high-stakes transaction verification.
-- **Colosseum Copilot Integration**: Real-time grounding against historical exploit archives and investor risk theses.
-- **Hardware-Enforced Security**: An Anchor-based "Sentinel Enclave" on Solana for cryptographic transaction gating and MPC share reconstruction.
-- **Interactive Analysis Dashboard**: A Next.js 14 frontend featuring interactive ReactFlow graph visualizations of the LangGuard decision process.
+Veritas is no longer just a security tool—it's a **Business Intelligence Layer** for the 2026 Agent Economy. By migrating from legacy MPC models to **Confidential Computing (TEE)** and **Access Control Execution (ACE)**, Veritas provides sub-second deterministic finality while tracking the actual economic value (aGDP) your Swarm generates.
 
 ---
 
-## ⚙️ Architecture: The LangGuard Pipeline
+## 🏛️ Architecture: The Frontier v2.6 Pipeline
 
-The system follows a rigorous multi-stage verification pipeline to ensure zero-trust security for agentic wallets.
+The system ensures zero-trust security for agentic wallets using hardware attestation and the ACE protocol.
 
 ```mermaid
 graph TD
-    A[Incoming Transaction] --> B{XGBoost Triage}
-    B -- Score < 20 --> C[Auto-Approved]
-    B -- Score >= 20 --> D[Swarm Initiation]
+    A[Incoming Request] --> B{ACE Protocol Gating}
+    B -- Unauthorized DApp --> C[Protocol-Level Rejection]
+    B -- Authorized Route --> D[Swarm Initiation]
     
-    subgraph Swarm[Parallel Swarm Agents]
+    subgraph Parallel Swarm Intelligence
         D --> D1[Forensics Agent]
         D --> D2[Protocol Agent]
-        D --> D3[Execution Agent]
+        D --> D3[Simulation Agent]
     end
     
-    D1 & D2 & D3 --> E[Colosseum Grounding]
-    E --> F[DeepSeek-R1 Synthesizer]
-    F --> G{Verdict}
+    D1 & D2 & D3 -.->|Overrides| E{Synthesizer Node}
     
-    G -- APPROVED --> H[MPC Share Reconstruction]
-    G -- BLOCKED --> I[Zeroize Enclave Memory]
-    G -- PENDING --> D
+    E -- Integrity Verified --> F[TEE Sentinel AWS Nitro]
+    E -- Risk Overridden --> G[Execution Blocked]
+    
+    subgraph Hardware Boundary
+        F --> H{Flash-Freeze Check}
+        H -- Velocity Spike >300% --> I[CFO Kill-Shot]
+        H -- Within Limits --> J[Hardware Signature Released]
+    end
+    
+    J --> K[Solana Validator]
+    K --> L[aGDP Dashboard Update]
 ```
-
-### Swarm Agents
-1.  **Forensics Agent**: Analyzes token age, holder concentration, and correlates against known rug/mixer addresses.
-2.  **Protocol Agent**: Audits smart contract logic, permissions (mint/freeze), and liquidity lock status.
-3.  **Execution Agent**: Simulates transactions in a sandboxed RPC environment to detect "silent transfers" or unexpected balance changes.
 
 ---
 
-## 🚀 Tech Stack
+## 🛡️ Core Components (Frontier v2.6)
 
-- **Frontend**: Next.js 14 (App Router), ReactFlow, Framer Motion, Tailwind CSS, Recharts.
-- **Engine**: LangGraph, DeepSeek-R1 (LLM), XGBoost (Classical ML).
-- **Blockchain**: Solana, Anchor Framework (Rust).
-- **Database**: Supabase (PostgreSQL) for persistence and telemetry.
-- **Infrastructure**: Colosseum Copilot API for historical grounding.
+### 1. TEE Sentinel (`tee_signer.ts`)
+**Why TEE? The Evolution from MPC.**  
+By April 2026, autonomous velocity requires sub-400ms finality. Traditional Multi-Party Computation (MPC) relies on multi-round network communication, which introduces unacceptable latency. The **TEE Sentinel** shifts the paradigm from "Trust the Math" to "Trust the Hardware."
+- The `Coldkey` is isolated inside an AWS Nitro or Intel TDX Enclave.
+- Deterministic Keccak256 hashing is used for instruction approval.
+- A hardware-level **"CFO Kill-Shot"** (Flash-Freeze) automatically zeroizes access if a 300% spend spike is detected.
+
+### 2. Protocol Gating (`ace_guard.ts`)
+Implements the Access Control Execution (ACE) protocol.
+- Only interactions with deeply verified, vetted programs (Jupiter, Orca, Raydium) receive an `ACE_IDENTITY_TOKEN`.
+- **Soft-ACE Swarm Override Validation (Defense in Depth):** Even if an instruction routes through an authorized protocol (like Jupiter), the Swarm's Forensics Agent actively scans the interaction. If a whitelisted program routes to an unverified rug-pull token flagged on SolanaFM, the Swarm will natively overrule the ACE whitelist and block the transaction.
+
+### 3. Agentic GDP (`agdp_tracker.ts`)
+*Veritas is a Yield-Protection Layer.*
+- Measures autonomous productivity in real-time.
+- Tracks `Agentic GDP`, `API Execution Cost`, and overall `Protected Yield (ROI)`.
+- Automates and negotiates micro-payments (HTTP x402) for API/Swarm operations utilizing the Colosseum Codex verification.
 
 ---
 
-## 📁 Project Structure
+## 🚀 The Brex Dashboard
 
-```bash
-├── .anchor/            # Anchor project configuration
-├── engine/             # Core LangGuard State Machine
-│   ├── langgraph/      # Agents (Forensics, Protocol, Execution)
-│   ├── models/         # XGBoost classifier logic
-│   └── sentinel_brain.ts # Main orchestrator
-├── frontend/           # Next.js 14 Dashboard
-├── programs/           # Solana/Anchor Smart Contracts
-│   └── sentinel-enclave/ # The on-chain security enclave
-├── tests/              # Anchor integration tests
-└── supabase_schema.sql # Database definition
-```
+This repo features a Next.js 14 frontend highlighting:
+- Live pulse of the active AWS Nitro Node.
+- Raw Keccak256 verification of the instruction hashes.
+- Hardcoded interactive Demo Presets:
+  - **High-Velocity Attack**: Shows the "CFO Kill-Shot" protecting $150,000 of funds in real-time.
+  - **Jupiter via Rug Token**: Evaluates the Soft-ACE Defense in Depth override.
+  - **Untrusted DEX**: Triggers instant protocol rejection via ACE validation.
 
 ---
 
@@ -82,9 +78,7 @@ graph TD
 
 ### Prerequisites
 - Node.js 20+
-- Anchor CLI & Rust
-- Solana CLI
-- Supabase Project
+- `.env` configured with your Virtuals API (for aGDP mocking) and Solana RPC.
 
 ### Installation
 
@@ -100,21 +94,13 @@ graph TD
     cd frontend && npm install
     ```
 
-3.  **Environment Setup**:
-    Create a `.env` file in the root and `frontend/` directories:
-    ```env
-    DEEPSEEK_API_KEY=your_key
-    COLOSSEUM_COPILOT_PAT=your_pat
-    NEXT_PUBLIC_SUPABASE_URL=your_url
-    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_key
+3.  **Run Development Environment**:
+    ```bash
+    cd frontend && npm run dev
     ```
-
-4.  **Run Development Tools**:
-    - **Frontend**: `cd frontend && npm run dev`
-    - **Engine Tests**: `npm run test` (runs Anchor tests)
 
 ---
 
 ## ⚖️ License
 
-This project is licensed under the [MIT License](LICENSE).
+This codebase is licensed under the MIT License. Built for the Solana Colosseum Hackathon (April 2026).

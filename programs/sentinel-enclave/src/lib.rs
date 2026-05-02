@@ -117,6 +117,8 @@ pub mod sentinel_enclave {
         vault.is_frozen = false;
         vault.max_slippage_bps = 500; // Default: 5% max slippage (500 basis points)
         vault.max_single_tx_lamports = 50_000_000_000; // 50 SOL max per TX
+        vault.ace_enabled = true; // ACE Governance enabled by default
+        vault.agdp_ledger = Pubkey::default(); // Will be set later when ledger is initialized
 
         emit!(VaultInitialized {
             vault: vault.key(),
@@ -412,6 +414,103 @@ pub mod sentinel_enclave {
 
         Ok(())
     }
+
+    // ── NEW: Phase 6 "Frontier v2.6" Instructions ───────────────────────
+
+    /// Initialize the Agentic GDP Ledger for a specific agent
+    pub fn initialize_agdp_ledger(
+        ctx: Context<InitializeAgdpLedger>,
+        agent_id: String,
+    ) -> Result<()> {
+        let vault = &mut ctx.accounts.vault;
+        let ledger = &mut ctx.accounts.ledger;
+
+        ledger.agent_id = agent_id;
+        ledger.vault = vault.key();
+        ledger.total_income = 0;
+        ledger.total_expense = 0;
+        ledger.event_count = 0;
+
+        vault.agdp_ledger = ledger.key();
+
+        msg!("aGDP Ledger initialized for agent: {}", ledger.agent_id);
+        Ok(())
+    }
+
+    /// On-chain enforcement of the ACE Governance whitelist
+    pub fn ace_validate(
+        ctx: Context<AceValidate>,
+        target_program: Pubkey,
+    ) -> Result<()> {
+        let vault = &ctx.accounts.vault;
+
+        require!(vault.ace_enabled, SentinelError::Unauthorized);
+
+        // Enforce the whitelist
+        if !known_protocols::is_whitelisted(&target_program) {
+            emit!(ACEViolation {
+                vault: vault.key(),
+                target_program,
+                violation_type: "PROGRAM_NOT_WHITELISTED".to_string(),
+                timestamp: Clock::get()?.unix_timestamp,
+            });
+
+            return err!(SentinelError::AceProgramNotWhitelisted);
+        }
+
+        msg!("ACE Validation passed for program: {}", target_program);
+        Ok(())
+    }
+
+    /// Log an Agentic GDP event (INCOME or EXPENSE) to the ledger
+    pub fn log_agdp_event(
+        ctx: Context<LogAgdpEvent>,
+        event_type: String,
+        value: u64,
+        description: String,
+    ) -> Result<()> {
+        let ledger = &mut ctx.accounts.ledger;
+
+        if event_type == "INCOME" {
+            ledger.total_income = ledger.total_income.checked_add(value).unwrap_or(ledger.total_income);
+        } else if event_type == "EXPENSE" {
+            ledger.total_expense = ledger.total_expense.checked_add(value).unwrap_or(ledger.total_expense);
+        }
+        
+        ledger.event_count += 1;
+
+        emit!(AgdpEventLogged {
+            vault: ctx.accounts.vault.key(),
+            ledger: ledger.key(),
+            event_type,
+            value,
+            description,
+            timestamp: Clock::get()?.unix_timestamp,
+        });
+
+        Ok(())
+    }
+
+    /// Hardware Enclave triggers emergency freeze if spend velocity > 300%
+    pub fn flash_freeze_trigger(
+        ctx: Context<FlashFreezeTrigger>,
+        velocity: u64,
+        baseline: u64,
+    ) -> Result<()> {
+        let vault = &mut ctx.accounts.vault;
+
+        vault.is_frozen = true;
+
+        emit!(FlashFreezeTriggered {
+            vault: vault.key(),
+            velocity,
+            baseline,
+            timestamp: Clock::get()?.unix_timestamp,
+        });
+
+        msg!("🚨 FLASH FREEZE TRIGGERED BY ENCLAVE. Velocity: {}", velocity);
+        Ok(())
+    }
 }
 
 // ============================================================================
@@ -666,6 +765,10 @@ pub struct SentinelVault {
     pub max_slippage_bps: u16,      // 2
     /// Maximum single transaction value in lamports
     pub max_single_tx_lamports: u64, // 8
+    /// ACE Protocol Governance Flag
+    pub ace_enabled: bool,          // 1
+    /// Pointer to the aGDP Ledger PDA
+    pub agdp_ledger: Pubkey,        // 32
 }
 
 impl SentinelVault {
@@ -683,7 +786,24 @@ impl SentinelVault {
         1 +   // is_frozen
         2 +   // max_slippage_bps
         8 +   // max_single_tx_lamports
+        1 +   // ace_enabled
+        32 +  // agdp_ledger
         64;   // padding for future fields
+}
+
+/// The Agentic GDP Ledger — on-chain transparency for agent productivity
+#[account]
+pub struct AgdpLedger {
+    pub agent_id: String,           // String up to 32 chars
+    pub vault: Pubkey,              // Associated vault
+    pub total_income: u64,          // Total protected/earned value
+    pub total_expense: u64,         // Total execution cost/spent
+    pub event_count: u64,           // Total number of recorded events
+}
+
+impl AgdpLedger {
+    // 8 (desc) + 36 (string overhead+data) + 32 + 8 + 8 + 8
+    pub const LEN: usize = 8 + 36 + 32 + 8 + 8 + 8;
 }
 
 // ============================================================================
@@ -827,6 +947,92 @@ pub struct Deposit<'info> {
     pub system_program: Program<'info, System>,
 }
 
+// ── NEW: Phase 6 "Frontier v2.6" Contexts ──────────────────────────────
+
+#[derive(Accounts)]
+#[instruction(agent_id: String)]
+pub struct InitializeAgdpLedger<'info> {
+    #[account(
+        mut,
+        seeds = [
+            b"sentinel-vault",
+            vault.owner.as_ref(),
+            vault.enclave_signer.as_ref(),
+        ],
+        bump = vault.vault_bump,
+        has_one = owner,
+    )]
+    pub vault: Account<'info, SentinelVault>,
+
+    #[account(
+        init,
+        payer = owner,
+        space = AgdpLedger::LEN,
+        seeds = [b"agdp-ledger", vault.key().as_ref(), agent_id.as_bytes()],
+        bump
+    )]
+    pub ledger: Account<'info, AgdpLedger>,
+
+    #[account(mut)]
+    pub owner: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct AceValidate<'info> {
+    #[account(
+        seeds = [
+            b"sentinel-vault",
+            vault.owner.as_ref(),
+            vault.enclave_signer.as_ref(),
+        ],
+        bump = vault.vault_bump,
+    )]
+    pub vault: Account<'info, SentinelVault>,
+
+    pub enclave_signer: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct LogAgdpEvent<'info> {
+    #[account(
+        seeds = [
+            b"sentinel-vault",
+            vault.owner.as_ref(),
+            vault.enclave_signer.as_ref(),
+        ],
+        bump = vault.vault_bump,
+        has_one = enclave_signer,
+    )]
+    pub vault: Account<'info, SentinelVault>,
+
+    #[account(
+        mut,
+        constraint = ledger.vault == vault.key() @ SentinelError::Unauthorized
+    )]
+    pub ledger: Account<'info, AgdpLedger>,
+
+    pub enclave_signer: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct FlashFreezeTrigger<'info> {
+    #[account(
+        mut,
+        seeds = [
+            b"sentinel-vault",
+            vault.owner.as_ref(),
+            vault.enclave_signer.as_ref(),
+        ],
+        bump = vault.vault_bump,
+        has_one = enclave_signer,
+    )]
+    pub vault: Account<'info, SentinelVault>,
+
+    pub enclave_signer: Signer<'info>,
+}
+
 // ============================================================================
 // EVENTS
 // ============================================================================
@@ -880,6 +1086,32 @@ pub struct Deposited {
     pub depositor: Pubkey,
     pub amount: u64,
     pub new_total: u64,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct ACEViolation {
+    pub vault: Pubkey,
+    pub target_program: Pubkey,
+    pub violation_type: String,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct FlashFreezeTriggered {
+    pub vault: Pubkey,
+    pub velocity: u64,
+    pub baseline: u64,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct AgdpEventLogged {
+    pub vault: Pubkey,
+    pub ledger: Pubkey,
+    pub event_type: String, // "INCOME" or "EXPENSE"
+    pub value: u64,
+    pub description: String,
     pub timestamp: i64,
 }
 
@@ -938,4 +1170,12 @@ pub enum SentinelError {
 
     #[msg("Slippage must be between 0 and 10000 basis points")]
     InvalidSlippage,
+
+    // ── NEW: Phase 6 "Frontier v2.6" Errors ─────────────────────────────
+    
+    #[msg("ACE GOVERNANCE REJECTION — target program is not whitelisted by the access control execution policy")]
+    AceProgramNotWhitelisted,
+
+    #[msg("FLASH FREEZE ACTIVE — execution halted due to excessive spend velocity")]
+    FlashFreezeActive,
 }

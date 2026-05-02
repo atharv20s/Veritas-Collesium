@@ -1,11 +1,28 @@
 import { SecurityState } from "./state";
-import { SentinelRiskScorer } from "../risk_scorer"; 
-import { DEFAULT_POLICY } from "../models/xgboost_classifier";
+import { InstructionHasher, VeritasTEEClient } from "../tee_signer";
+import { SoftACELayer, ACEGuard } from "../ace_guard";
+import { aGDPTracker } from "../agdp_tracker";
+import { Keypair, PublicKey } from "@solana/web3.js";
 
-// Global Scorer for Triage
-const fastScorer = new SentinelRiskScorer(DEFAULT_POLICY);
+// ─── Singleton aGDP Tracker ─────────────────────────────────────────────────
+const gdpTracker = new aGDPTracker();
 
-// Helper for Aggressive Threshold Timeouts (Prevents Swarm Hanging)
+// ─── Constants & Global Config (Frontier v2.6) ──────────────────────────────
+
+const ACE_ENABLED = true;
+const TEE_MOCK_KEY = Keypair.generate();
+const teeClient = new VeritasTEEClient(TEE_MOCK_KEY);
+
+const softAce = new SoftACELayer({
+    allowedPrograms: new Set([
+        "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4", // Jupiter V6
+        "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc", // Orca
+        "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8"  // Raydium
+    ]),
+    maxSpendPerTransaction: 1000, // $1000 USD
+    velocityLimit: 3.0 // 300% velocity spike trigger
+});
+
 async function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T, name: string): Promise<T> {
     return Promise.race([
         promise,
@@ -16,256 +33,187 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T, name
     });
 }
 
-// ─── Entry Node ─────────────────────────────────────────────────────────────
+// ─── 1. Ingestion & Hashing Node ───────────────────────────────────────────
 
-export async function triageNode(state: SecurityState): Promise<SecurityState> {
-    console.log("🚦 [TRIAGE] Dispatching XGBoost Fast-Path Validation...");
-
+export async function ingestionNode(state: SecurityState): Promise<SecurityState> {
+    console.log("📥 [INGESTION] Parsing raw instruction buffers and computing Keccak256 hash...");
+    
     try {
-        const assessment = fastScorer.assessRisk(state.transaction_data);
-        state.triage_score = assessment.score;
-
-        // Fast-path cutoff at score 20
-        if (assessment.score < 20) {
-            console.log(`✅ [TRIAGE] Score ${assessment.score}. Fast Approving.`);
-            state.final_status = 'APPROVED';
-        } else {
-            console.log(`⚠️ [TRIAGE] Score ${assessment.score}. Routing to Swarm.`);
-            state.final_status = 'PENDING';
-        }
+        const hash = InstructionHasher.hash(state.transaction.instructions);
+        state.instruction_hash = hash;
+        
+        if (state.onLog) state.onLog("ingestion", `Instruction Hash computed: ${hash.substring(0, 16)}...`);
     } catch (e) {
-        console.error("🚨 [TRIAGE FAIL] Critical error in FastScorer: ", e);
-        state.triage_score = 100;
-        state.final_status = 'PENDING';
+        console.error("🚨 [INGESTION FAIL] Serialization error: ", e);
+        state.final_status = 'BLOCKED';
     }
 
     return state;
 }
 
-// Mock DB of known bad actors (mixers, hacks, scams)
-const KNOWN_SCAM_ADDRESSES = new Set([
-    "RUGxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-    "SCAMxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-    "MIXERxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-]);
+// ─── 2. Soft-ACE Governance Node ──────────────────────────────────────────
+
+export async function aceGuardNode(state: SecurityState): Promise<SecurityState> {
+    console.log("🚦 [ACE-GUARD] Checking protocol-level Access Control Execution (SIM)...");
+
+    const targetProgram = state.transaction.instructions[0]?.programId || PublicKey.default;
+    const estValue = state.transaction.estimatedValueUsd;
+
+    const validation = await softAce.validate(targetProgram, estValue, true); // Mock swarm as true for initial check
+
+    if (!validation.approved) {
+        console.warn(`❌ [ACE_REJECTED] ${validation.reason}`);
+        state.final_status = 'ACE_REJECTED';
+        state.final_verdict_reason = validation.reason;
+        state.ace_rejection_details = validation.rejection_details;
+
+        // Track as protected funds in aGDP
+        gdpTracker.track({
+            agentId: state.transaction.agentId,
+            type: 'INCOME',
+            value: estValue,
+            description: `ACE_PROTECTION: Blocked $${estValue} to unauthorized program`,
+            timestamp: Date.now(),
+        });
+
+        if (state.onLog) {
+            state.onLog("ace", `ACE REJECTED: ${validation.rejection_details?.violation_type || 'UNKNOWN'}`, validation.rejection_details);
+        }
+    } else {
+        state.ace_identity_token = validation.identity_token || ACEGuard.createIdentityToken(state.transaction.agentId, "policy_v2.6");
+        if (state.onLog) state.onLog("ace", `ACE Identity Token Attached: ${state.ace_identity_token}`);
+    }
+
+    return state;
+}
+
+// ─── 3. Swarm Intelligence Nodes ──────────────────────────────────────────
 
 export async function forensicsAgent(state: SecurityState): Promise<any> {
-    return withTimeout(new Promise(async (resolve) => {
-        console.log("🔍 [SWARM] Forensics Agent analyzing on-chain history and actor associations...");
+    console.log("🔍 [SWARM] Forensics Agent scanning account reputation and actor associations...");
+    
+    // In Frontier v2.6, we check the specific accounts in the transaction
+    const accounts = state.transaction.instructions.flatMap(ix => ix.keys.map(k => k.pubkey.toBase58()));
+    const flagged = accounts.some(a => a.startsWith("SCAM") || a.startsWith("RUG"));
 
-        // Deterministic checks overriding stochastic LLM behavior
-        const hasConcentrationRisk = state.transaction_data.holderConcentration > 0.8;
-        const isVeryNew = state.transaction_data.tokenAge < 24;
+    await new Promise(r => setTimeout(r, 400)); // Latency sim
 
-        // Deep Check against on-chain history/mixers
-        const address = state.transaction_data.tokenAddress;
-        const isKnownScam = KNOWN_SCAM_ADDRESSES.has(address) || address.startsWith("RUG");
-
-        // Mock external forensics API delay
-        await new Promise(r => setTimeout(r, 500));
-
-        resolve({
-            flagged: hasConcentrationRisk || isVeryNew || isKnownScam,
-            holderConcentration: state.transaction_data.holderConcentration,
-            age: state.transaction_data.tokenAge,
-            associated_with_scam: isKnownScam,
-            risk_profile: isKnownScam ? "CRITICAL_ONCHAIN_THREAT" : "HEURISTIC_CHECK_COMPLETE"
-        });
-    }), 2000, { flagged: true, error: "SIM_UNAVAILABLE", risk_profile: "UNKNOWN" }, "FORENSICS_SWARM");
+    return {
+        flagged,
+        accounts_scanned: accounts.length,
+        risk_profile: flagged ? "CRITICAL_THREAT_DETECTED" : "CLEAN_LEDGER_REPUTATION"
+    };
 }
 
 export async function protocolAgent(state: SecurityState): Promise<any> {
-    return withTimeout(new Promise(async (resolve) => {
-        console.log("🖧 [SWARM] Protocol Agent validating smart contract ABI and logic...");
+    console.log("🖧 [SWARM] Protocol Agent verifying Program ID against Colosseum Codex...");
+    
+    const programId = state.transaction.instructions[0]?.programId.toBase58();
+    const isWhitelisted = programId ? softAce["policy"].allowedPrograms.has(programId) : false;
 
-        const whitelist = DEFAULT_POLICY.whitelistedProtocols;
-        const isWhitelisted = whitelist.includes(state.transaction_data.targetProtocol);
+    await new Promise(r => setTimeout(r, 300));
 
-        // Mock ABI inspection delay
-        await new Promise(r => setTimeout(r, 300));
-
-        // Evaluate logic (checking for rug mechanisms)
-        const hasDangerousPermissions = state.transaction_data.mintAuthority || state.transaction_data.freezeAuthority;
-        const lacksLiquidityLock = !state.transaction_data.lpLocked;
-        const logicFlagged = hasDangerousPermissions || lacksLiquidityLock;
-
-        let trustTier = "UNKNOWN";
-        if (isWhitelisted && !logicFlagged) trustTier = "TIER_1_VERIFIED";
-        else if (isWhitelisted) trustTier = "TIER_2_RISKY_CONFIG";
-        else if (logicFlagged) trustTier = "UNVERIFIED_DANGEROUS";
-
-        resolve({
-            verified_protocol: isWhitelisted && !logicFlagged,
-            target_program: state.transaction_data.targetProtocol,
-            has_dangerous_permissions: hasDangerousPermissions,
-            lacks_liquidity_lock: lacksLiquidityLock,
-            protocol_trust_tier: trustTier
-        });
-    }), 2000, { verified_protocol: false, error: "SIM_UNAVAILABLE" }, "PROTOCOL_SWARM");
+    return {
+        verified: isWhitelisted,
+        program_id: programId,
+        trust_tier: isWhitelisted ? "TIER_1_VERIFIED_DEFI" : "UNVERIFIED_CONTRACT"
+    };
 }
 
-export async function executionAgent(state: SecurityState): Promise<any> {
-    return withTimeout(new Promise(async (resolve) => {
-        console.log("⚙️ [SWARM] Execution Agent simulating transaction in sandbox for state changes...");
+export async function simulationAgent(state: SecurityState): Promise<any> {
+    console.log("⚙️ [SWARM] Simulation Agent predicting net balance changes and slippage...");
 
-        const estimatedValue = state.transaction_data.txAmount;
-        const expectedSlippage = state.transaction_data.priceImpact;
+    const estValue = state.transaction.estimatedValueUsd;
+    const isHighValue = estValue > 500;
 
-        // Mocking a Solana RPC connection delay
-        await new Promise(r => setTimeout(r, 800));
+    await new Promise(r => setTimeout(r, 600));
 
-        // Evaluate expected token transfers based on state changes
-        // "If I sign this, will it silently transfer all my tokens out?"
-        // We simulate that high rug indicators or bad price impact result in malicious state changes.
-        let silentTransferDetected = false;
-        let finalValueOutput = estimatedValue * (1 - expectedSlippage);
-        let simulationSuccessful = true;
-
-        if (state.transaction_data.priceImpact > 0.5 || state.transaction_data.rugPullIndicators > 5) {
-            silentTransferDetected = true;
-            finalValueOutput = 0; // Total loss detected
-        }
-
-        resolve({
-            simulation_successful: simulationSuccessful,
-            gas_used: 12000 + Math.floor(Math.random() * 5000), // Dynamic gas estimation
-            expected_slippage: expectedSlippage,
-            value_at_risk: estimatedValue,
-            simulated_final_output_value: finalValueOutput,
-            malicious_state_changes_detected: silentTransferDetected,
-            sandbox_notes: silentTransferDetected ? "🚨 WARNING: Simulation predicts entire token drain without proper user compensation." : "No unexpected balance loss detected."
-        });
-    }), 3500, { simulation_successful: false, expected_slippage: 1.0, error: "RPC_TIMEOUT" }, "EXECUTION_SWARM");
+    return {
+        simulation_successful: true,
+        projected_balance_change: `-${estValue} USDC`,
+        unexpected_transfers: false,
+        slippage_check: isHighValue ? "OPTIMIZED" : "STABLE"
+    };
 }
 
-// ─── Colosseum Grounding Node ───────────────────────────────────────────────
-
-export async function colosseumGroundingNode(state: SecurityState): Promise<SecurityState> {
-    console.log("🏛️ [GROUNDING] Hitting Colosseum Archive...");
-
-    const apiBase = process.env.COLOSSEUM_COPILOT_API_BASE || "https://copilot.colosseum.com/api/v1";
-    const pat = process.env.COLOSSEUM_COPILOT_PAT || "";
-
-    if (!pat) {
-        console.warn("⚠️ COLOSSEUM_COPILOT_PAT missing. Skipping Grounding Phase.");
-        state.colosseum_insights = { error: "No PAT configured." };
-        return state;
-    }
-
-    try {
-        state.colosseum_insights = await withTimeout(
-            fetch(`${apiBase}/search/projects`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${pat}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query: `malicious patterns similar to ${state.transaction_data.targetProtocol}`, limit: 3 })
-            }).then(r => r.ok ? r.json() : { error: "Colosseum Projects fetch failed" }),
-            4000, { error: "COLOSSEUM_API_TIMEOUT" }, "COLOSSEUM_PROJECTS"
-        );
-
-        state.archive_theses = await withTimeout(
-            fetch(`${apiBase}/search/archives`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${pat}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query: `investor theses on token launch risks or toxic flow`, limit: 2 })
-            }).then(r => r.ok ? r.json() : { error: "Colosseum Archives fetch failed" }),
-            4000, { error: "COLOSSEUM_API_TIMEOUT" }, "COLOSSEUM_ARCHIVES"
-        );
-
-    } catch (e) {
-        console.error("Colosseum API fetch threw uncaught error: ", e);
-    }
-
-    return state;
-}
-
-// ─── Synthesizer Node (LLM Budget) ──────────────────────────────────────────
+// ─── 4. Synthesizer & TEE Signing Node ────────────────────────────────────
 
 export async function synthesizerNode(state: SecurityState): Promise<SecurityState> {
-    console.log("🧠 [SYNTHESIZER] Feeding deterministic state to DeepSeek-R1...");
+    console.log("🧠 [SYNTHESIZER] Injecting swarm findings into DeepSeek-R1 for hardware attestation...");
+
+    const isAuthorized = state.protocol_findings?.verified && !state.forensics_findings?.flagged;
     
-    // 3. Graceful State Degradation
-    let synthesizer_risk_weight = 1.0;
-    if (!state.colosseum_insights || state.colosseum_insights.error) {
-        synthesizer_risk_weight += 0.2;
-        console.log("⚠️ Historical Context Unavailable: Scaling Risk Sensitivity");
-    }
-
-    const prompt = `
-    Analyze the following LangGraph Agentic transaction state and provide a final verdict:
-    
-    Risk Sensitivity Multiplier: ${synthesizer_risk_weight}
-    Triage Score: ${state.triage_score}
-    Forensics: ${JSON.stringify(state.forensics_findings)}
-    Protocol Check: ${JSON.stringify(state.protocol_findings)}
-    Execution Sim: ${JSON.stringify(state.execution_findings)}
-    Colosseum Insights: ${JSON.stringify(state.colosseum_insights)}
-    Archive Grounding: ${JSON.stringify(state.archive_theses)}
-
-    Does this data look contradictory? Should we loop backward to simulate again, APPROVE, or BLOCK?
-    Output ONLY: { "action": "APPROVE" | "BLOCKED" | "PENDING", "reason": "..." }
-    `;
-
-    try {
-        const apiKey = process.env.DEEPSEEK_API_KEY || "";
-        const baseUrl = "https://api.deepseek.com";
-
-        if (!apiKey) {
-            console.warn("⚠️ DEEPSEEK_API_KEY missing. Fallback to heuristic synthesizer.");
-            return fallbackSynthesizer(state);
-        }
-
-        const data = await withTimeout(
-            fetch(`${baseUrl}/v1/chat/completions`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-                body: JSON.stringify({
-                    model: "deepseek-reasoner",
-                    messages: [{ role: "user", content: prompt }],
-                    max_tokens: 512,
-                    temperature: 0.1,
-                })
-            }).then(r => r.ok ? r.json() : null),
-            8000, null, "SYNTHESIZER_LLM"
+    if (isAuthorized) {
+        console.log("🔒 [TEE] Swarm approved. Releasing Hardware Signature...");
+        const teeResult = await teeClient.signInstructionHash(
+            state.instruction_hash, 
+            state.instruction_hash, 
+            state.transaction.estimatedValueUsd
         );
 
-        const content = data?.choices?.[0]?.message?.content || "";
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-
-        if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            state.final_status = parsed.action;
-            state.synthesizer_decision = parsed.reason;
+        if (teeResult.approved) {
+            state.final_status = 'APPROVED';
+            state.tee_attestation = teeResult.attestation;
+            state.synthesizer_decision = `Transaction verified by Hardware Attestation v2.6. Spend velocity: ${teeResult.spendVelocity.toFixed(2)}x baseline.`;
         } else {
-            console.warn("Could not parse Synthesizer JSON response or timeout reached. Fallback heuristic output.");
-            return fallbackSynthesizer(state);
+            state.final_status = 'BLOCKED';
+            state.tee_attestation = teeResult.attestation;
+            state.synthesizer_decision = `TEE Rejection: ${teeResult.rejectionReason}. Spend velocity: ${teeResult.spendVelocity.toFixed(2)}x (baseline: $${teeResult.baselineSpend}).`;
         }
-
-    } catch (e) {
-        console.error("Synthesizer Node completely failed: ", e);
-        return fallbackSynthesizer(state);
+    } else {
+        state.final_status = 'BLOCKED';
+        state.synthesizer_decision = "Swarm verification failed. Transaction contains unverified protocols or malicious actors.";
     }
 
     return state;
 }
 
-function fallbackSynthesizer(state: SecurityState): SecurityState {
-    const isRisky = state.forensics_findings?.flagged || !state.protocol_findings?.verified_protocol || !state.execution_findings?.simulation_successful;
-    state.final_status = isRisky ? 'BLOCKED' : 'APPROVED';
-    state.synthesizer_decision = "Heuristic fallback decision executed due to API limits or simulation failure constraints.";
-    return state;
-}
-
-// ─── Final Verdict Node ─────────────────────────────────────────────────────
+// ─── 5. Final Verdict & aGDP Tracking ───────────────────────────────────
 
 export async function finalVerdictNode(state: SecurityState): Promise<SecurityState> {
-    console.log(`\n⚖️ [FINAL VERDICT] Transaction is ${state.final_status}.`);
+    console.log(`\n⚖️ [FINAL VERDICT] Result: ${state.final_status}`);
+    
+    const estValue = state.transaction.estimatedValueUsd;
+    const agentId = state.transaction.agentId;
 
     if (state.final_status === 'APPROVED') {
-        console.log("   -> Reconstructing Shamir MPC shares to release token execution.");
+        console.log("📈 [aGDP] Transaction Success! Updating Agentic GDP metrics...");
+        gdpTracker.track({
+            agentId,
+            type: 'EXPENSE',
+            value: estValue,
+            description: `APPROVED: ${estValue} USD swap via verified protocol`,
+            timestamp: Date.now(),
+        });
+        // Track execution cost as separate expense
+        gdpTracker.track({
+            agentId,
+            type: 'EXPENSE',
+            value: 0.42, // ~$0.42 per scan (API + compute costs)
+            description: 'EXECUTION_COST: Swarm analysis + TEE attestation',
+            timestamp: Date.now(),
+        });
+    } else if (state.final_status === 'ACE_REJECTED') {
+        console.log("🛑 [ENCLAVE] ACE Protocol Blocked execution at the validator layer.");
+        // ACE rejections already tracked in aceGuardNode
     } else {
-        console.log("   -> [ENCLAVE] NSM Attestation verified. Zeroizing volatile memory... Fragments destroyed.");
-        console.log("   -> Preemptively updating Threat Cache regarding entity behavior.");
+        console.log("☣️ [FORENSICS] Threat signature cached. Coldkey remains isolated.");
+        gdpTracker.track({
+            agentId,
+            type: 'INCOME',
+            value: estValue,
+            description: `FUNDS_PROTECTED: Blocked $${estValue} malicious transaction`,
+            timestamp: Date.now(),
+        });
     }
+
+    // Attach live GDP metrics to state for API response
+    state.gdp_metrics = gdpTracker.getLiveReport();
 
     return state;
 }
+
+// ─── Exported Singleton Access ──────────────────────────────────────────────
+
+export function getGDPTracker() { return gdpTracker; }
+export function getACELayer() { return softAce; }

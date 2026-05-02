@@ -2,18 +2,35 @@
 .env
 .env.local
 
-# Dependencies
-node_modules/
-target/
+# Next.js
+.next/
+out/
+build/
 
-# Anchor
-.anchor/
-test-ledger/
-
-# IDE
+# IDEs
 .vscode/
 .idea/
+*.swp
+*.swo
 
 # OS
 .DS_Store
 Thumbs.db
+
+# Typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# Rust / Anchor (if applicable)
+target/
+.anchor/
+test-ledger/
+
+# Node
+node_modules/
+
+# Local Results & Agent Details
+results_*.json
+details_*.json
+search_query.json
+*.log

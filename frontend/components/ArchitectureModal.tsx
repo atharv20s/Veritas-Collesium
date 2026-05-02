@@ -91,32 +91,32 @@ const initialNodes: Node[] = [
 
   // --- Triage Group ---
   { id: "g_triage", type: "groupNode", position: { x: 500, y: 120 }, style: { width: 350, height: 260 }, data: { label: "Entry Node: Triage", icon: "🟢" } },
-  { id: "xgb", type: "serviceNode", parentNode: "g_triage", extent: "parent", position: { x: 80, y: 50 }, data: { label: "Fast XGBoost Scorer", desc: "Heuristic evaluation" } },
-  { id: "swarm_node", type: "serviceNode", parentNode: "g_triage", extent: "parent", position: { x: 80, y: 160 }, data: { label: "SwarmRouter", bg: "purple" } },
+  { id: "xgb", type: "serviceNode", parentId: "g_triage", extent: "parent", position: { x: 80, y: 50 }, data: { label: "Fast XGBoost Scorer", desc: "Heuristic evaluation" } },
+  { id: "swarm_node", type: "serviceNode", parentId: "g_triage", extent: "parent", position: { x: 80, y: 160 }, data: { label: "SwarmRouter", bg: "purple" } },
 
   // --- Context Resolution Group ---
   { id: "g_context", type: "groupNode", position: { x: 100, y: 450 }, style: { width: 1100, height: 450 }, data: { label: "Context Resolution", icon: "🧠" } },
   
   // Parallel Swarm (Inside Context)
-  { id: "g_swarm", type: "groupNode", parentNode: "g_context", extent: "parent", position: { x: 50, y: 50 }, style: { width: 1000, height: 160 }, data: { label: "Parallel Swarm", icon: "⚡" } },
-  { id: "forensic", type: "serviceNode", parentNode: "g_swarm", extent: "parent", position: { x: 40, y: 50 }, data: { label: "Forensics Agent", desc: "Tavily Search: Scams/Hacks" } },
-  { id: "protocol", type: "serviceNode", parentNode: "g_swarm", extent: "parent", position: { x: 380, y: 50 }, data: { label: "Protocol Agent", desc: "RPC ABI & Audit Validation" } },
-  { id: "execution", type: "serviceNode", parentNode: "g_swarm", extent: "parent", position: { x: 720, y: 50 }, data: { label: "Execution Sim Agent", desc: "State Change Prediction" } },
+  { id: "g_swarm", type: "groupNode", parentId: "g_context", extent: "parent", position: { x: 50, y: 50 }, style: { width: 1000, height: 160 }, data: { label: "Parallel Swarm", icon: "⚡" } },
+  { id: "forensic", type: "serviceNode", parentId: "g_swarm", extent: "parent", position: { x: 40, y: 50 }, data: { label: "Forensics Agent", desc: "Tavily Search: Scams/Hacks" } },
+  { id: "protocol", type: "serviceNode", parentId: "g_swarm", extent: "parent", position: { x: 380, y: 50 }, data: { label: "Protocol Agent", desc: "RPC ABI & Audit Validation" } },
+  { id: "execution", type: "serviceNode", parentId: "g_swarm", extent: "parent", position: { x: 720, y: 50 }, data: { label: "Execution Sim Agent", desc: "State Change Prediction" } },
   
-  { id: "colosseum", type: "serviceNode", parentNode: "g_context", extent: "parent", position: { x: 430, y: 250 }, data: { label: "Colosseum Grounding Node", desc: "Conflict resolution boundary" } },
-  { id: "deepseek", type: "serviceNode", parentNode: "g_context", extent: "parent", position: { x: 430, y: 350 }, data: { label: "DeepSeek Synthesizer", bg: "orange", desc: "LLM Verdict Consensus" } },
+  { id: "colosseum", type: "serviceNode", parentId: "g_context", extent: "parent", position: { x: 430, y: 250 }, data: { label: "Colosseum Grounding Node", desc: "Conflict resolution boundary" } },
+  { id: "deepseek", type: "serviceNode", parentId: "g_context", extent: "parent", position: { x: 430, y: 350 }, data: { label: "DeepSeek Synthesizer", bg: "orange", desc: "LLM Verdict Consensus" } },
 
   // --- Enclave Group ---
   { id: "g_enclave", type: "groupNode", position: { x: 100, y: 950 }, style: { width: 1100, height: 420 }, data: { label: "AWS Nitro Enclave Boundary", icon: "🛡️" } },
-  { id: "verdict", type: "serviceNode", parentNode: "g_enclave", extent: "parent", position: { x: 430, y: 60 }, data: { label: "Final Verdict Logic", desc: "Fail-Closed Gate" } },
+  { id: "verdict", type: "serviceNode", parentId: "g_enclave", extent: "parent", position: { x: 430, y: 60 }, data: { label: "Final Verdict Logic", desc: "Fail-Closed Gate" } },
   
-  { id: "blocked", type: "serviceNode", parentNode: "g_enclave", extent: "parent", position: { x: 150, y: 180 }, data: { label: "TX BLOCKED", bg: "red" } },
-  { id: "cache", type: "serviceNode", parentNode: "g_enclave", extent: "parent", position: { x: 40, y: 300 }, data: { label: "Update Threat Cache", desc: "Poison wallet list", bg: "red" } },
-  { id: "zeroize", type: "serviceNode", parentNode: "g_enclave", extent: "parent", position: { x: 260, y: 300 }, data: { label: "Zeroize MPC Fragments", bg: "red", desc: "Destroy enclave memory" } },
+  { id: "blocked", type: "serviceNode", parentId: "g_enclave", extent: "parent", position: { x: 150, y: 180 }, data: { label: "TX BLOCKED", bg: "red" } },
+  { id: "cache", type: "serviceNode", parentId: "g_enclave", extent: "parent", position: { x: 40, y: 300 }, data: { label: "Update Threat Cache", desc: "Poison wallet list", bg: "red" } },
+  { id: "zeroize", type: "serviceNode", parentId: "g_enclave", extent: "parent", position: { x: 260, y: 300 }, data: { label: "Zeroize MPC Fragments", bg: "red", desc: "Destroy enclave memory" } },
   
-  { id: "approve", type: "serviceNode", parentNode: "g_enclave", extent: "parent", position: { x: 750, y: 180 }, data: { label: "Approve & Sign", bg: "green" } },
-  { id: "shamir", type: "serviceNode", parentNode: "g_enclave", extent: "parent", position: { x: 750, y: 270 }, data: { label: "Reconstruct Shamir Shares", bg: "green" } },
-  { id: "cpi", type: "serviceNode", parentNode: "g_enclave", extent: "parent", position: { x: 750, y: 360 }, data: { label: "Execute Target Solana CPI", bg: "green" } },
+  { id: "approve", type: "serviceNode", parentId: "g_enclave", extent: "parent", position: { x: 750, y: 180 }, data: { label: "Approve & Sign", bg: "green" } },
+  { id: "shamir", type: "serviceNode", parentId: "g_enclave", extent: "parent", position: { x: 750, y: 270 }, data: { label: "Reconstruct Shamir Shares", bg: "green" } },
+  { id: "cpi", type: "serviceNode", parentId: "g_enclave", extent: "parent", position: { x: 750, y: 360 }, data: { label: "Execute Target Solana CPI", bg: "green" } },
 
   // --- DB Nodes (ERD layer) ---
   { id: "db_sessions", type: "dbNode", position: { x: -250, y: 150 }, data: { label: "wallet_sessions", fields: [

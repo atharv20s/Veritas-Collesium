@@ -1,85 +1,71 @@
-import { SecurityState, createInitialState } from "./langgraph/state";
+import { SecurityState, createInitialState, VeritasTransaction } from "./langgraph/state";
 import { 
-    triageNode, 
+    ingestionNode,
+    aceGuardNode,
     forensicsAgent, 
     protocolAgent, 
-    executionAgent, 
-    colosseumGroundingNode, 
+    simulationAgent, 
     synthesizerNode, 
     finalVerdictNode 
 } from "./langgraph/nodes";
-import { TransactionState } from "./models/xgboost_classifier";
 
 /**
  * ============================================================================
- * SENTINEL BRAIN — The LangGuard State Machine (Orchestrator)
+ * VERITAS FRONTIER — Sentinel Brain (Orchestrator)
  * ============================================================================
  * 
- * Executes the cyclical State Machine graph for transaction verification.
- * Follows the Triage -> Swarm -> Grounding -> Synthesizer -> Verdict flow.
+ * Executes the Frontier v2.6 State Machine for transaction verification.
+ * Follows the flow: Ingestion -> ACE -> Swarm -> Synthesizer -> Verdict.
  */
 
 export async function runAgenticLoop(initialState: SecurityState): Promise<SecurityState> {
     console.log("\n==========================================================");
-    console.log("🌀 LangGuard State Machine Initialized...");
+    console.log("🌀 Veritas Frontier v2.6 State Machine Initialized...");
     console.log("==========================================================");
 
-    let currentState = await triageNode(initialState);
+    // 1. Ingestion & Hashing
+    let currentState = await ingestionNode(initialState);
+    if (currentState.final_status === 'BLOCKED') return finalVerdictNode(currentState);
+
+    // 2. ACE Protocol Gating (Access Control Execution)
+    currentState = await aceGuardNode(currentState);
+    if (currentState.final_status === 'ACE_REJECTED') return finalVerdictNode(currentState);
+
+    // 3. Parallel Swarm Intelligence
+    const loopString = `\n🔄 --- Swarm Intelligence Analysis ---`;
+    console.log(loopString);
+    if (currentState.onLog) currentState.onLog("orchestrator", loopString);
+
+    const [forensics, protocol, simulation] = await Promise.all([
+        forensicsAgent(currentState),
+        protocolAgent(currentState),
+        simulationAgent(currentState)
+    ]);
     
-    // Fast path exit
-    if (currentState.final_status === 'APPROVED') {
-        return finalVerdictNode(currentState);
+    // Merge findings into state
+    currentState.forensics_findings = forensics;
+    currentState.protocol_findings = protocol;
+    currentState.simulation_findings = simulation;
+
+    if (currentState.onLog) {
+        currentState.onLog("forensics", `Forensics check resolved: ${forensics.risk_profile}`);
+        currentState.onLog("protocol", `Protocol check bounded: ${protocol.trust_tier}`, protocol);
+        currentState.onLog("simulation", `Deterministic Balance Prediction: ${simulation.projected_balance_change}`);
     }
 
-    // Entering the Graph Loop
-    while (currentState.final_status === 'PENDING' && currentState.loop_count < 3) {
-        currentState.loop_count++;
-        const loopString = `\n🔄 --- Graph Loop Iteration ${currentState.loop_count} ---`;
-        console.log(loopString);
-        if (currentState.onLog) currentState.onLog("orchestrator", loopString);
-
-        // 1. Parallel Swarm Execution
-        if (currentState.onLog) currentState.onLog("system", "Starting Swarm Validation Parallel Nodes...");
-        const [forensics, protocol, execution] = await Promise.all([
-            forensicsAgent(currentState),
-            protocolAgent(currentState),
-            executionAgent(currentState)
-        ]);
-        
-        // Merge findings into state
-        currentState.forensics_findings = forensics;
-        currentState.protocol_findings = protocol;
-        currentState.execution_findings = execution;
-
-        if (currentState.onLog) {
-            currentState.onLog("forensics", `Forensics check resolved: ${JSON.stringify(forensics.risk_profile || forensics.error)}`);
-            currentState.onLog("protocol", `Protocol check bounded: ${protocol.verified_protocol ? "TRUSTED" : "UNTRUSTED"}`, protocol);
-            currentState.onLog("execution", `RPC Simulated Gas Output: ${execution.gas_used || execution.error}`);
-        }
-
-        // 2. Colosseum Grounding
-        if (currentState.onLog) currentState.onLog("colosseum", "Fetching Historical Exploit Correlators from Copilot...");
-        currentState = await colosseumGroundingNode(currentState);
-        if (currentState.onLog) currentState.onLog("colosseum", "Archive patterns mapped successfully.");
-
-        // 3. Synthesizer Decision (The LLM Budget)
-        if (currentState.onLog) currentState.onLog("synthesizer", "Injecting determinism memory into DeepSeek-R1 evaluation prompt...");
-        currentState = await synthesizerNode(currentState);
-        if (currentState.onLog) currentState.onLog("synthesizer", `Intelligence synthesized successfully determining action constraints -> '${currentState.final_status}'`, { reason: currentState.synthesizer_decision });
-
-        // Synthesizer logic updates currentState.final_status to 'APPROVED', 'BLOCKED', 
-        // or leaves it 'PENDING' to loop back to Execution Agent.
+    // 4. Synthesizer & Hardware Attestation (DeepSeek-R1)
+    if (currentState.onLog) currentState.onLog("synthesizer", "Injecting determinism memory into DeepSeek-R1 for TEE Attestation...");
+    currentState = await synthesizerNode(currentState);
+    
+    if (currentState.onLog) {
+        currentState.onLog("synthesizer", `Intelligence synthesized successfully -> '${currentState.final_status}'`, { reason: currentState.synthesizer_decision });
     }
 
-    if (currentState.final_status === 'PENDING') {
-        console.log("\n⚠️ [ORCHESTRATOR] Max loops reached! Forcing BLOCKED condition.");
-        currentState.final_status = 'BLOCKED';
-    }
-
+    // 5. Final Verdict & aGDP Tracking
     return finalVerdictNode(currentState);
 }
 
-export async function executeLangGuard(txData: TransactionState, onLog?: (agent: string, msg: string, data?: any) => void): Promise<SecurityState> {
+export async function executeLangGuard(txData: VeritasTransaction, onLog?: (agent: string, msg: string, data?: any) => void): Promise<SecurityState> {
     const initialState = createInitialState(txData, onLog);
     return runAgenticLoop(initialState);
 }

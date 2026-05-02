@@ -37,16 +37,59 @@ CREATE TABLE IF NOT EXISTS agent_reports (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 4. Create ace_rejections table (Frontier v2.6)
+CREATE TABLE IF NOT EXISTS ace_rejections (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  agent_id TEXT NOT NULL,
+  target_program TEXT NOT NULL,
+  violation_type TEXT NOT NULL,
+  estimated_value_usd NUMERIC NOT NULL,
+  identity_token TEXT,
+  policy_version TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 5. Create agdp_events table (Frontier v2.6)
+CREATE TABLE IF NOT EXISTS agdp_events (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  agent_id TEXT NOT NULL,
+  event_type TEXT NOT NULL, -- 'INCOME', 'EXPENSE'
+  value_usd NUMERIC NOT NULL,
+  description TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 6. Create tee_attestations table (Frontier v2.6)
+CREATE TABLE IF NOT EXISTS tee_attestations (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  agent_id TEXT NOT NULL,
+  instruction_hash TEXT NOT NULL,
+  signature TEXT NOT NULL,
+  spend_velocity_percent NUMERIC NOT NULL,
+  baseline_value NUMERIC NOT NULL,
+  status TEXT NOT NULL, -- 'APPROVED', 'FLASH_FREEZE'
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Optional: Enable row level security (RLS) policies if you want public inserts from the frontend
 ALTER TABLE wallet_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scan_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ace_rejections ENABLE ROW LEVEL SECURITY;
+ALTER TABLE agdp_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tee_attestations ENABLE ROW LEVEL SECURITY;
 
 -- Allow anon to insert (since users aren't authenticated via email, just wallet)
 CREATE POLICY "Allow anon insert to wallet_sessions" ON wallet_sessions FOR INSERT TO anon WITH CHECK (true);
 CREATE POLICY "Allow anon insert to scan_history" ON scan_history FOR INSERT TO anon WITH CHECK (true);
 CREATE POLICY "Allow anon insert to agent_reports" ON agent_reports FOR INSERT TO anon WITH CHECK (true);
+CREATE POLICY "Allow anon insert to ace_rejections" ON ace_rejections FOR INSERT TO anon WITH CHECK (true);
+CREATE POLICY "Allow anon insert to agdp_events" ON agdp_events FOR INSERT TO anon WITH CHECK (true);
+CREATE POLICY "Allow anon insert to tee_attestations" ON tee_attestations FOR INSERT TO anon WITH CHECK (true);
 
 -- Allow reading own records (simplified, assuming we query by wallet_address)
 CREATE POLICY "Allow read based on wallet" ON scan_history FOR SELECT TO anon USING (true);
 CREATE POLICY "Allow read based on wallet" ON agent_reports FOR SELECT TO anon USING (true);
+CREATE POLICY "Allow read public" ON ace_rejections FOR SELECT TO anon USING (true);
+CREATE POLICY "Allow read public" ON agdp_events FOR SELECT TO anon USING (true);
+CREATE POLICY "Allow read public" ON tee_attestations FOR SELECT TO anon USING (true);

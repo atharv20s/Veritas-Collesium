@@ -1,29 +1,4 @@
-// ─── Sentinel Enclave Engine — Barrel Exports ───────────────────────────────
-
-// Distilled XGBoost Risk Scoring Engine
-export { 
-  SentinelRiskScorer, 
-  createSentinelScorer, 
-  DEFAULT_POLICY 
-} from "./risk_scorer";
-
-export type { 
-  TransactionState, 
-  RiskAssessment, 
-  PolicyConfig 
-} from "./risk_scorer";
-
-// Enclave Client (Shamir SSS + Solana Bridge)
-export { 
-  SentinelEnclaveClient, 
-  ShamirSSS 
-} from "./enclave_client";
-
-export type { 
-  EnclaveConfig, 
-  TransactionRequest, 
-  EnclaveResponse 
-} from "./enclave_client";
+// ─── Veritas Frontier Engine — Barrel Exports ───────────────────────────────
 
 // DeepSeek-R1 Sovereign Brain Auditor
 export {
@@ -43,18 +18,79 @@ export {
   executeLangGuard
 } from "./sentinel_brain";
 
+export {
+  getGDPTracker,
+  getACELayer
+} from "./langgraph/nodes";
+
 export type {
   SecurityState,
-  FinalStatus
+  FinalStatus,
+  VeritasTransaction,
 } from "./langgraph/state";
 
-// Unified Fast XGBoost Classifier
+// TEE Signer (AWS Nitro / Intel TDX)
 export {
-  FastXGBoostScorer,
-  createFastXGBoostScorer
-} from "./models/xgboost_classifier";
+  VeritasTEEClient,
+  InstructionHasher
+} from "./tee_signer";
 
 export type {
-  RiskBreakdown,
-  EnsembleResult
-} from "./models/xgboost_classifier";
+  TEEAttestation,
+  TEESignResult
+} from "./tee_signer";
+
+// ACE Governance (Access Control Execution)
+export {
+  ACEGuard,
+  SoftACELayer
+} from "./ace_guard";
+
+export type {
+  ACEPolicy,
+  ACEViolationType,
+  ACERejectionDetails,
+  ACEPolicySnapshot,
+  ACEValidationResult,
+} from "./ace_guard";
+
+// x402 Facilitator (Agent-to-Agent Payments)
+export {
+  x402Facilitator
+} from "./x402_facilitator";
+
+export type {
+  x402Request,
+  x402PaymentResult,
+  x402PaymentRecord,
+} from "./x402_facilitator";
+
+// Agentic GDP (aGDP) Tracker
+export {
+  aGDPTracker
+} from "./agdp_tracker";
+
+export type {
+  aGDPEvent,
+  aGDPMetrics,
+  aGDPLiveReport,
+  EfficiencyDataPoint,
+} from "./agdp_tracker";
+
+// Jupiter V6 Execution Engine
+export {
+  JupiterV6Client,
+  TOKEN_MINTS,
+} from "./execution_engine";
+
+export type {
+  JupiterQuoteResponse,
+  JupiterSwapResponse,
+  ExecutionPlan,
+} from "./execution_engine";
+
+// Sentinel Enclave Vault SDK
+export {
+  SentinelVaultClient,
+  SENTINEL_PROGRAM_ID,
+} from "./vault_client";

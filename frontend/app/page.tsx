@@ -20,11 +20,14 @@ import ForensicTimeline from "@/components/ForensicTimeline";
 import VerdictCard from "@/components/VerdictCard";
 import QAAnswer from "@/components/QAAnswer";
 import EnclaveReport from "@/components/EnclaveReport";
+import AgdpDashboard from "@/components/AgdpDashboard";
+import AceRejectionPanel from "@/components/AceRejectionPanel";
+import VaultManager from "@/components/VaultManager";
 import { InvestigationHero } from "@/components/ui/investigation-hero";
 import { usePersistentMode } from "@/components/ModeToggle";
-import { Home, Loader2, Shield } from "lucide-react";
+import { Home, Loader2, Shield, Activity, ShieldAlert, Database } from "lucide-react";
 
-const EXPERT_TABS = ["feed", "report", "claims", "graph", "timeline", "enclave"] as const;
+const EXPERT_TABS = ["feed", "report", "agdp", "ace", "vault", "enclave"] as const;
 type ExpertTab = (typeof EXPERT_TABS)[number];
 
 export default function Page() {
@@ -238,6 +241,9 @@ export default function Page() {
                     }`}
                   >
                     {tab === "enclave" && <Shield className="w-3 h-3" />}
+                    {tab === "agdp" && <Activity className="w-3 h-3" />}
+                    {tab === "ace" && <ShieldAlert className="w-3 h-3" />}
+                    {tab === "vault" && <Database className="w-3 h-3" />}
                     {tab}
                   </button>
                 ))}
@@ -246,9 +252,9 @@ export default function Page() {
               <div className="flex-1 min-h-0 overflow-y-auto pb-6">
                 {expertTab === "feed" && <VerdictCard report={report} />}
                 {expertTab === "report" && report && <FinalReport report={report} />}
-                {expertTab === "claims" && <ClaimCards claims={claims} />}
-                {expertTab === "graph" && <KnowledgeGraph nodes={entityNodes} edges={entityEdges} />}
-                {expertTab === "timeline" && <ForensicTimeline events={timelineEvents} />}
+                {expertTab === "agdp" && <AgdpDashboard />}
+                {expertTab === "ace" && <AceRejectionPanel />}
+                {expertTab === "vault" && <VaultManager />}
                 {expertTab === "enclave" && <EnclaveReport />}
               </div>
             </div>

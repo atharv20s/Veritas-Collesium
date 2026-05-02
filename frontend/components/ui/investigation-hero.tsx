@@ -250,7 +250,7 @@ export function InvestigationHero() {
                     {isClassifying ? "Classifying..." : qaLoading ? "Answering..." : "Investigating..."}
                   </>
                 ) : entity.trim() ? (
-                  <>Evaluate Token --></>
+                  <>Evaluate Token &rarr;</>
                 ) : (
                   <>Ask Veritas &rarr;</>
                 )}

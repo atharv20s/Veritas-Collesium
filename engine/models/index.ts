@@ -1,10 +1,15 @@
-// ─── Sentinel Enclave — Distilled Models Barrel Export ──────────────────────────────
-// Replaced the heavy RL ensemble (TD3, SAC, PPO) with high-speed xgboost classifier.
+// ─── Veritas Frontier — Models Barrel Export ────────────────────────────────
+// Legacy XGBoost classifier removed in v2.6 Frontier migration.
+// Risk assessment is now handled by the DeepSeek-R1 auditor + Swarm Intelligence.
 
-export { FastXGBoostScorer, createFastXGBoostScorer, DEFAULT_POLICY } from "./xgboost_classifier";
+// Re-export the DeepSeek auditor as the primary model
+export {
+  DeepSeekAuditor,
+  createDeepSeekAuditor,
+} from "../deepseek_auditor";
+
 export type {
-  TransactionState,
-  RiskBreakdown,
-  EnsembleResult,
-  PolicyConfig,
-} from "./xgboost_classifier";
+  DeepSeekAuditRequest,
+  DeepSeekAuditResult,
+  DeepSeekConfig,
+} from "../deepseek_auditor";
