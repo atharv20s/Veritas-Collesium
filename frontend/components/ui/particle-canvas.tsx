@@ -33,22 +33,22 @@ export function ParticleCanvas({ disableCursor = false }: ParticleCanvasProps) {
     const sq = (x: number) => x * x;
 
     const opts = {
-      particles: 280,
-      baseSize: 3,
+      particles: 120,
+      baseSize: 2,
       addedSize: 2,
-      maxSize: 6,
-      baseLight: 5,
-      addedLight: 25,
-      baseAngSpeed: 0.0008,
-      addedAngSpeed: 0.0012,
+      maxSize: 4,
+      baseLight: 10,
+      addedLight: 20,
+      baseAngSpeed: 0.0006,
+      addedAngSpeed: 0.001,
       baseVariedAng: 0.0004,
       addedVariedAng: 0.0006,
       // Attractor orbits wide — near the screen edges
-      srcBaseAng: -0.008,
-      srcVariedAng: 0.004,
-      srcBaseDist: 350,
-      srcVariedDist: 150,
-      colorTpl: "hsla(hue,80%,light%,0.8)",
+      srcBaseAng: -0.006,
+      srcVariedAng: 0.003,
+      srcBaseDist: 300,
+      srcVariedDist: 100,
+      colorTpl: "hsla(hue,70%,light%,0.6)",
     };
 
     let tick = 0;
