@@ -1,71 +1,104 @@
-import { SecurityState, createInitialState, VeritasTransaction } from "./langgraph/state";
-import { 
-    ingestionNode,
-    aceGuardNode,
-    forensicsAgent, 
-    protocolAgent, 
-    simulationAgent, 
-    synthesizerNode, 
-    finalVerdictNode 
-} from "./langgraph/nodes";
+import axios from "axios";
 
-/**
- * ============================================================================
- * VERITAS FRONTIER — Sentinel Brain (Orchestrator)
- * ============================================================================
- * 
- * Executes the Frontier v2.6 State Machine for transaction verification.
- * Follows the flow: Ingestion -> ACE -> Swarm -> Synthesizer -> Verdict.
- */
-
-export async function runAgenticLoop(initialState: SecurityState): Promise<SecurityState> {
-    console.log("\n==========================================================");
-    console.log("🌀 Veritas Frontier v2.6 State Machine Initialized...");
-    console.log("==========================================================");
-
-    // 1. Ingestion & Hashing
-    let currentState = await ingestionNode(initialState);
-    if (currentState.final_status === 'BLOCKED') return finalVerdictNode(currentState);
-
-    // 2. ACE Protocol Gating (Access Control Execution)
-    currentState = await aceGuardNode(currentState);
-    if (currentState.final_status === 'ACE_REJECTED') return finalVerdictNode(currentState);
-
-    // 3. Parallel Swarm Intelligence
-    const loopString = `\n🔄 --- Swarm Intelligence Analysis ---`;
-    console.log(loopString);
-    if (currentState.onLog) currentState.onLog("orchestrator", loopString);
-
-    const [forensics, protocol, simulation] = await Promise.all([
-        forensicsAgent(currentState),
-        protocolAgent(currentState),
-        simulationAgent(currentState)
-    ]);
-    
-    // Merge findings into state
-    currentState.forensics_findings = forensics;
-    currentState.protocol_findings = protocol;
-    currentState.simulation_findings = simulation;
-
-    if (currentState.onLog) {
-        currentState.onLog("forensics", `Forensics check resolved: ${forensics.risk_profile}`);
-        currentState.onLog("protocol", `Protocol check bounded: ${protocol.trust_tier}`, protocol);
-        currentState.onLog("simulation", `Deterministic Balance Prediction: ${simulation.projected_balance_change}`);
-    }
-
-    // 4. Synthesizer & Hardware Attestation (DeepSeek-R1)
-    if (currentState.onLog) currentState.onLog("synthesizer", "Injecting determinism memory into DeepSeek-R1 for TEE Attestation...");
-    currentState = await synthesizerNode(currentState);
-    
-    if (currentState.onLog) {
-        currentState.onLog("synthesizer", `Intelligence synthesized successfully -> '${currentState.final_status}'`, { reason: currentState.synthesizer_decision });
-    }
-
-    // 5. Final Verdict & aGDP Tracking
-    return finalVerdictNode(currentState);
+export interface TokenScanData {
+    address: string;
+    symbol: string;
+    name: string;
+    priceUsd?: number;
+    liquidityUsd?: number;
+    volume24h?: number;
+    mintAuthority: string | null;
+    freezeAuthority: string | null;
+    isMutable: boolean;
+    txHistory: any[];
 }
 
-export async function executeLangGuard(txData: VeritasTransaction, onLog?: (agent: string, msg: string, data?: any) => void): Promise<SecurityState> {
-    const initialState = createInitialState(txData, onLog);
-    return runAgenticLoop(initialState);
+export type RiskVerdict = 'SAFE' | 'SUSPICIOUS' | 'MALICIOUS';
+
+export interface RiskReport {
+    score: number; // 0-100
+    verdict: RiskVerdict;
+    flags: string[];
+}
+
+export class SentinelBrain {
+    private heliusKey: string;
+
+    constructor(heliusKey: string) {
+        this.heliusKey = heliusKey;
+    }
+
+    /**
+     * Risk Scoring Engine
+     * Computes threat scores based on metadata, liquidity, and transaction history.
+     */
+    async computeThreatScore(data: TokenScanData): Promise<RiskReport> {
+        let score = 0;
+        const flags: string[] = [];
+
+        // 1. Authority Check
+        if (data.mintAuthority) {
+            score += 30;
+            flags.push("MINT_AUTHORITY_ENABLED");
+        }
+        if (data.freezeAuthority) {
+            score += 20;
+            flags.push("FREEZE_AUTHORITY_ENABLED");
+        }
+        if (data.isMutable) {
+            score += 10;
+            flags.push("METADATA_IS_MUTABLE");
+        }
+
+        // 2. Liquidity Check
+        if (data.liquidityUsd && data.liquidityUsd < 5000) {
+            score += 40;
+            flags.push("LOW_LIQUIDITY");
+        } else if (data.liquidityUsd && data.liquidityUsd < 50000) {
+            score += 15;
+            flags.push("MODERATE_LIQUIDITY_RISK");
+        }
+
+        // 3. Volume/Price anomalies (Simplified)
+        if (data.volume24h && data.volume24h < 1000) {
+            score += 10;
+            flags.push("STAGNANT_TRADING_VOLUME");
+        }
+
+        // Final Classification
+        let verdict: RiskVerdict = 'SAFE';
+        if (score > 70) {
+            verdict = 'MALICIOUS';
+        } else if (score > 30) {
+            verdict = 'SUSPICIOUS';
+        }
+
+        return {
+            score,
+            verdict,
+            flags
+        };
+    }
+
+    /**
+     * Fetches raw scan data from Helius
+     */
+    async fetchTokenData(tokenAddress: string): Promise<TokenScanData> {
+        const url = `https://mainnet.helius-rpc.com/?api-key=${this.heliusKey}`;
+        
+        // Mocking Helius response for the demo/build
+        // In reality, this would use axios.post(url, { jsonrpc: '2.0', id: '1', method: 'getAsset', params: { id: tokenAddress } })
+        
+        return {
+            address: tokenAddress,
+            symbol: "TKN",
+            name: "Target Token",
+            mintAuthority: null,
+            freezeAuthority: null,
+            isMutable: true,
+            liquidityUsd: 10000,
+            volume24h: 500,
+            txHistory: []
+        };
+    }
 }

@@ -1,37 +1,48 @@
-# AgentGuard - Veritas Collesium
-# Environment (API keys!)
-.env
-.env.local
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
 
 # Next.js
 .next/
 out/
-build/
 
-# IDEs
-.vscode/
-.idea/
-*.swp
-*.swo
+# Production
+build/
+dist/
+
+# Env
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Anchor/Solana
+target/
+.anchor/
+test-ledger/
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Typescript
-*.tsbuildinfo
-next-env.d.ts
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
 
-# Rust / Anchor (if applicable)
-target/
-.anchor/
-test-ledger/
-
-# Node
-node_modules/
-
-# Local Results & Agent Details
+# Project specific
 results_*.json
 details_*.json
 search_query.json
-*.log
+skills-lock.json

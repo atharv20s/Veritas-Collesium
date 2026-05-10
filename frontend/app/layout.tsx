@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { Toaster } from "sonner";
 import { Providers } from "./providers";
 import { SolanaProvider } from "@/components/SolanaProvider";
 import { ArchitectureModal } from "@/components/ArchitectureModal";
@@ -29,6 +30,7 @@ export default function RootLayout({
             <Providers>
               {children}
               <ArchitectureModal />
+              <Toaster position="bottom-right" theme="dark" richColors />
             </Providers>
           </SolanaProvider>
         </main>

@@ -1,106 +1,104 @@
-![Veritas Sentinel Banner](./assets/banner.png)
+# Veritas Frontier v2.6 — Sentinel Enclave
+### Hardware-Secured, Multi-Agent Forensics for AI Agent Wallets on Solana
 
-# Veritas: The Brex for AI Bots
-**Hardware-Enforced Protocol Security & Agentic Yield Management on Solana.**
-
-Veritas is no longer just a security tool—it's a **Business Intelligence Layer** for the 2026 Agent Economy. By migrating from legacy MPC models to **Confidential Computing (TEE)** and **Access Control Execution (ACE)**, Veritas provides sub-second deterministic finality while tracking the actual economic value (aGDP) your Swarm generates.
+Veritas Frontier is a high-fidelity security platform designed to protect AI agents on Solana. It combines **TEE (Trusted Execution Environment)** isolation with **LangGraph Multi-Agent Swarms** to provide a "Defense-in-Depth" architecture for agentic transactions.
 
 ---
 
-## 🏛️ Architecture: The Frontier v2.6 Pipeline
+## 🌀 System Architecture & ERD
 
-The system ensures zero-trust security for agentic wallets using hardware attestation and the ACE protocol.
+The following diagram illustrates the relationship between the Multi-Agent Investigation layer, the TEE Security layer, and the On-Chain Governance (ACE).
 
 ```mermaid
-graph TD
-    A[Incoming Request] --> B{ACE Protocol Gating}
-    B -- Unauthorized DApp --> C[Protocol-Level Rejection]
-    B -- Authorized Route --> D[Swarm Initiation]
+erDiagram
+    USER ||--o{ AGENT : "owns"
+    AGENT ||--o{ INVESTIGATION : "initiates"
+    AGENT ||--o{ SCAN : "triggers"
     
-    subgraph Parallel Swarm Intelligence
-        D --> D1[Forensics Agent]
-        D --> D2[Protocol Agent]
-        D --> D3[Simulation Agent]
-    end
+    INVESTIGATION ||--o{ CLAIM : "extracts"
+    CLAIM ||--o{ CONFLICT : "triggers"
     
-    D1 & D2 & D3 -.->|Overrides| E{Synthesizer Node}
+    SCAN ||--|| TEE_ATTESTATION : "signed_by"
+    SCAN ||--o{ SENTINEL_REPORT : "generates"
     
-    E -- Integrity Verified --> F[TEE Sentinel AWS Nitro]
-    E -- Risk Overridden --> G[Execution Blocked]
+    AGENT ||--o{ ACE_POLICY : "subject_to"
+    ACE_POLICY ||--o{ REJECTION_LOG : "generates"
     
-    subgraph Hardware Boundary
-        F --> H{Flash-Freeze Check}
-        H -- Velocity Spike >300% --> I[CFO Kill-Shot]
-        H -- Within Limits --> J[Hardware Signature Released]
-    end
+    AGENT ||--|| GDP_METRICS : "tracks_roi"
+
+    INVESTIGATION {
+        string id
+        string target_entity
+        string status
+    }
     
-    J --> K[Solana Validator]
-    K --> L[aGDP Dashboard Update]
+    CLAIM {
+        string id
+        string content
+        float confidence
+        string source_url
+    }
+    
+    SCAN {
+        string id
+        string token_address
+        int risk_score
+        string verdict
+    }
+
+    TEE_ATTESTATION {
+        string hardware_id
+        string pcr0_hash
+        string signature
+    }
 ```
 
 ---
 
-## 🛡️ Core Components (Frontier v2.6)
+## 🕵️ Investigation Swarm (LangGraph)
+A multi-agent pipeline that automates deep-dive research into any entity or token.
+- **Hunter Agent**: Aggressive web crawler (Tavily) that finds sources and extracts claims.
+- **Skeptic Agent**: Adversarial "Devil's Advocate" that cross-examines findings to detect conflicts.
+- **Human Handoff**: A circuit breaker that pauses execution when the swarm hits high-severity ambiguity.
+- **Synthesizer**: Gemini 2.5 Flash LLM that generates premium intelligence reports.
 
-### 1. TEE Sentinel (`tee_signer.ts`)
-**Why TEE? The Evolution from MPC.**  
-By April 2026, autonomous velocity requires sub-400ms finality. Traditional Multi-Party Computation (MPC) relies on multi-round network communication, which introduces unacceptable latency. The **TEE Sentinel** shifts the paradigm from "Trust the Math" to "Trust the Hardware."
-- The `Coldkey` is isolated inside an AWS Nitro or Intel TDX Enclave.
-- Deterministic Keccak256 hashing is used for instruction approval.
-- A hardware-level **"CFO Kill-Shot"** (Flash-Freeze) automatically zeroizes access if a 300% spend spike is detected.
-
-### 2. Protocol Gating (`ace_guard.ts`)
-Implements the Access Control Execution (ACE) protocol.
-- Only interactions with deeply verified, vetted programs (Jupiter, Orca, Raydium) receive an `ACE_IDENTITY_TOKEN`.
-- **Soft-ACE Swarm Override Validation (Defense in Depth):** Even if an instruction routes through an authorized protocol (like Jupiter), the Swarm's Forensics Agent actively scans the interaction. If a whitelisted program routes to an unverified rug-pull token flagged on SolanaFM, the Swarm will natively overrule the ACE whitelist and block the transaction.
-
-### 3. Agentic GDP (`agdp_tracker.ts`)
-*Veritas is a Yield-Protection Layer.*
-- Measures autonomous productivity in real-time.
-- Tracks `Agentic GDP`, `API Execution Cost`, and overall `Protected Yield (ROI)`.
-- Automates and negotiates micro-payments (HTTP x402) for API/Swarm operations utilizing the Colosseum Codex verification.
+## 🛡️ TEE Enclave Layer (Sentinel)
+The hardware root-of-trust for agentic transactions.
+- **Sentinel Brain**: A risk-scoring engine that classifies tokens as SAFE, SUSPICIOUS, or MALICIOUS based on Helius & Jupiter data.
+- **TEE Signer**: AWS Nitro-simulated enclave that signs every scan result with an isolated Ed25519 keypair.
+- **ACE Guard**: Agent Compliance Engine that enforces protocol-level gating (whitelist, spend limits).
+- **FluxRPC Shield**: A private RPC relay that protects against MEV and DDoS attacks.
 
 ---
 
-## 🚀 The Brex Dashboard
+## 🚀 Deployment Suggestion: Railway
+While Vercel is great for frontends, **Railway** is better for monorepos that include background agents and SSE (Server-Sent Events) streams.
 
-This repo features a Next.js 14 frontend highlighting:
-- Live pulse of the active AWS Nitro Node.
-- Raw Keccak256 verification of the instruction hashes.
-- Hardcoded interactive Demo Presets:
-  - **High-Velocity Attack**: Shows the "CFO Kill-Shot" protecting $150,000 of funds in real-time.
-  - **Jupiter via Rug Token**: Evaluates the Soft-ACE Defense in Depth override.
-  - **Untrusted DEX**: Triggers instant protocol rejection via ACE validation.
+1.  **Monorepo Support**: Handles both the Next.js frontend and the Node.js engine seamlessly.
+2.  **Persistent SSE**: Unlike Vercel's serverless functions which have a 10s-30s timeout, Railway's containers stay alive, allowing the LangGraph swarm to run long investigations without being killed.
+3.  **Environment Variables**: Easy management of `HELIUS`, `TAVILY`, and `GEMINI` keys.
 
 ---
 
-## 🛠️ Getting Started
-
-### Prerequisites
-- Node.js 20+
-- `.env` configured with your Virtuals API (for aGDP mocking) and Solana RPC.
-
-### Installation
-
-1.  **Clone the Repository**:
-    ```bash
-    git clone https://github.com/atharv20s/Veritas-Collesium.git
-    cd Veritas-Collesium
-    ```
-
-2.  **Install Dependencies**:
-    ```bash
-    npm install
-    cd frontend && npm install
-    ```
-
-3.  **Run Development Environment**:
-    ```bash
-    cd frontend && npm run dev
-    ```
+## 🔑 API Keys Reference
+| Key Name | Purpose | Required |
+| :--- | :--- | :--- |
+| `GEMINI_API_KEY` | Intelligence synthesis & threat reports | ✅ Critical |
+| `TAVILY_API_KEY` | Web research & forensic crawling | ✅ Critical |
+| `HELIUS_API_KEY` | Solana token metadata & history | ✅ Critical |
+| `FLUXRPC_API_KEY` | MEV-shielded private RPC relay | ✅ Critical |
+| `JUPITER_API_KEY` | Token liquidity & price impact checks | ✅ Critical |
+| `SUPABASE_URL` | Log persistence & audit trails | ⚠️ Optional |
 
 ---
 
-## ⚖️ License
+## 🛠️ Installation
+```bash
+# Install dependencies
+npm install
 
-This codebase is licensed under the MIT License. Built for the Solana Colosseum Hackathon (April 2026).
+# Run development server
+npm run dev
+```
+
+*Veritas Frontier — Secure your DeFi agents. We evaluate it.*

@@ -9,6 +9,7 @@ export interface VeritasTransaction {
     feePayer: PublicKey;
     estimatedValueUsd: number;
     agentId: string;
+    tokenAddress?: string; // New field for threat tracking
     metadata?: any;
 }
 

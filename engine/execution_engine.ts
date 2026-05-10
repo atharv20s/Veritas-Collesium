@@ -201,6 +201,7 @@ export class JupiterV6Client {
       feePayer: userPublicKey,
       estimatedValueUsd: inAmountNum,
       agentId,
+      tokenAddress: quoteResponse.outputMint,
     };
 
     const executionPlan: ExecutionPlan = {

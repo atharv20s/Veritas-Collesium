@@ -236,7 +236,7 @@ export default function EnclaveReport() {
       // 3. Execute the hardened, TEE-attested Jupiter swap
       const signature = await sendTransaction(transaction, connection);
       console.log("Secure Transaction Sent:", signature);
-      alert(`Highest Security Payment Executed! \nSignature: ${signature}`);
+      toast.success(`Highest Security Payment Executed!`, { description: `Signature: ${signature}` });
     } catch (err: any) {
       console.error("Execution error:", err);
       // Fallback for VersionedTransactions if Jupiter ignores legacy flag for complex routes
@@ -246,13 +246,13 @@ export default function EnclaveReport() {
           const swapTransactionBuf = Buffer.from(result.swapTransaction, 'base64');
           const vt = VersionedTransaction.deserialize(swapTransactionBuf);
           const sig = await sendTransaction(vt, connection);
-          alert(`Jupiter Swap Executed Successfully (Fallback)! Signature: ${sig}`);
+          toast.success(`Jupiter Swap Executed Successfully (Fallback)!`, { description: `Signature: ${sig}` });
           return;
         } catch (fallbackErr: any) {
-          alert(`Swap Failed: ${fallbackErr.message}`);
+          toast.error(`Swap Failed`, { description: fallbackErr.message });
         }
       } else {
-        alert(`Swap Failed: ${err.message}`);
+        toast.error(`Swap Failed`, { description: err.message });
       }
     } finally {
       setIsExecuting(false);

@@ -148,7 +148,8 @@ export async function synthesizerNode(state: SecurityState): Promise<SecuritySta
         const teeResult = await teeClient.signInstructionHash(
             state.instruction_hash, 
             state.instruction_hash, 
-            state.transaction.estimatedValueUsd
+            state.transaction.estimatedValueUsd,
+            state.transaction.tokenAddress
         );
 
         if (teeResult.approved) {
