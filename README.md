@@ -1,5 +1,11 @@
+<p align="center">
+  <img src="assets/logo.png" width="150" alt="Veritas Logo">
+</p>
+
 # Veritas Frontier v2.6 - Sentinel Enclave
 ### Hardware-Secured, Multi-Agent Forensics for AI Agent Wallets on Solana
+
+![Veritas Banner](assets/banner.png)
 
 Veritas Frontier is a high-fidelity security platform designed to protect AI agents on Solana. It combines TEE (Trusted Execution Environment) isolation with LangGraph Multi-Agent Swarms to provide a Defense-in-Depth architecture for agentic transactions.
 
