@@ -11,6 +11,61 @@ Veritas Frontier is a high-fidelity security platform designed to protect AI age
 
 ---
 
+## The Problem
+
+AI agents are now autonomous economic actors on Solana. They hold wallets, sign transactions, and move real money — 24/7, with no human in the loop.
+
+**But there is zero security infrastructure built for them.**
+
+- A single compromised LLM prompt can drain an agent's entire wallet in one transaction.
+- Agents interact with unverified tokens and protocols with no way to assess risk before signing.
+- There is no compliance layer — no spend limits, no program whitelists, no audit trail.
+- When an agent gets exploited, there's no forensic record of *what happened* or *why*.
+
+Traditional wallet security (multisig, hardware wallets) was designed for humans. It doesn't work for software agents that need to transact autonomously at machine speed.
+
+> **The gap:** Billions of dollars are flowing into agentic infrastructure (ElizaOS, Virtuals, Sendai), but nobody is building the security layer underneath it. Every agent protocol is one exploit away from a catastrophic loss event.
+
+## Our Solution
+
+Veritas Frontier is a **defense-in-depth security pipeline** that sits between an AI agent and the Solana blockchain. Every transaction an agent proposes must pass through three independent security layers before it ever touches the chain:
+
+**Layer 1 — ACE (Agent Compliance Engine)**
+Protocol-level gating that enforces hard rules before any intelligence runs. Program whitelists (only interact with Jupiter, Orca, Raydium), spend limits ($1K per TX), and velocity gates (3x baseline = freeze). If a transaction violates policy, it's rejected instantly — no LLM needed.
+
+**Layer 2 — Multi-Agent Investigation Swarm (LangGraph)**
+Three specialized agents run in parallel to analyze the transaction:
+- *Forensics Agent* — pulls token history from Helius, runs rugcheck, checks holder concentration
+- *Protocol Agent* — verifies on-chain program metadata via FluxRPC
+- *Simulation Agent* — simulates the swap on Jupiter to measure real price impact and slippage
+
+A Gemini 2.5 Flash synthesizer merges all findings into a structured risk verdict with chain-of-thought reasoning.
+
+**Layer 3 — TEE Hardware Attestation (AWS Nitro)**
+The final verdict is signed inside a Trusted Execution Environment using an isolated Ed25519 coldkey. The TEE produces a cryptographic attestation document (instruction hash + signature + policy hash) that proves the transaction was analyzed and approved by an untampered security enclave. If the risk is too high, the TEE triggers a **Flash-Freeze** — zeroizing the signing key and halting all agent activity.
+
+**The result:** Every approved transaction has a full forensic audit trail — who proposed it, what the swarm found, what the TEE signed, and why. Every blocked transaction has a rejection log with the exact violation. Nothing goes on-chain without passing all three layers.
+
+## Why Now
+
+| Signal | What it means |
+|:---|:---|
+| **$500M+** flowing into agentic crypto protocols in 2025-2026 | The market for agents is exploding, but security is an afterthought |
+| ElizaOS, Virtuals, Sendai all launching agent wallets on Solana | Every one of these needs a security layer — they don't have one |
+| Solana processing 50M+ daily transactions | The attack surface is massive and growing |
+| No existing "firewall for AI agents" product exists | **First-mover advantage in a category that doesn't exist yet** |
+
+## Business Model
+
+| Revenue Stream | How it works |
+|:---|:---|
+| **Per-scan API pricing** | Agent protocols pay per transaction scanned (like an API gateway) |
+| **Enterprise SLA tiers** | Premium latency, dedicated TEE instances, custom policy rules |
+| **Protocol integrations** | White-label Veritas as the security layer inside agent frameworks |
+| **Audit-as-a-Service** | On-demand forensic investigations for post-incident analysis |
+
+---
+
 ## System Architecture
 
 The full transaction pipeline — from proposal to on-chain broadcast — is shown below.
